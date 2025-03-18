@@ -28,8 +28,11 @@ const allowedSedes = [
   { sede: "sede2", password: "clave2" }
 ];
 
-// Almacenamiento en memoria de sesiones de usuario: token -> { sede, counter }
-const userSessions = {};
+// Almacenamiento en memoria:
+// sessionsByToken: token -> { sede }
+// countersBySede: sede -> contador (compartido entre todas las sesiones de esa sede)
+const sessionsByToken = {};
+const countersBySede = {};
 
 // Endpoint de login para autenticar
 app.post("/login", (req, res) => {
@@ -43,21 +46,30 @@ app.post("/login", (req, res) => {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
 
-  // Generar un token aleatorio
-  const token = crypto.randomBytes(16).toString("hex");
-  // Inicializa el contador en 50 para esta sesión
-  userSessions[token] = { sede, counter: 50 };
+  // Si la sede no tiene un contador inicializado, lo ponemos en 50
+  if (countersBySede[sede] === undefined) {
+    countersBySede[sede] = 50;
+  }
 
-  return res.json({ token, counter: 50 });
+  // Revisar si ya existe un token para esta sede, reutilizarlo
+  let existingToken = Object.keys(sessionsByToken).find(t => sessionsByToken[t].sede === sede);
+  if (existingToken) {
+    return res.json({ token: existingToken, counter: countersBySede[sede] });
+  } else {
+    // Generar un token nuevo y guardarlo
+    const token = crypto.randomBytes(16).toString("hex");
+    sessionsByToken[token] = { sede };
+    return res.json({ token, counter: countersBySede[sede] });
+  }
 });
 
 // Middleware para autenticar usando el token enviado en la cabecera x-auth-token
 function authenticate(req, res, next) {
   const token = req.header("x-auth-token");
-  if (!token || !userSessions[token]) {
+  if (!token || !sessionsByToken[token]) {
     return res.status(401).json({ error: "No autorizado. Inicie sesión." });
   }
-  req.userSession = userSessions[token];
+  req.sede = sessionsByToken[token].sede;
   req.token = token;
   next();
 }
@@ -65,12 +77,18 @@ function authenticate(req, res, next) {
 // ----- Endpoint para generar imagen (protegido) -----
 
 app.post("/generate", authenticate, async (req, res) => {
-  // Verificar si aún quedan imágenes disponibles
-  if (req.userSession.counter <= 0) {
+  const sede = req.sede;
+
+  // Asegurarse de que la sede tenga contador
+  if (countersBySede[sede] === undefined) {
+    countersBySede[sede] = 50;
+  }
+
+  if (countersBySede[sede] <= 0) {
     return res.status(403).json({ error: "Límite de generación de imágenes alcanzado." });
   }
-  // Decrementar el contador
-  req.userSession.counter--;
+  // Decrementar el contador compartido para la sede
+  countersBySede[sede]--;
 
   try {
     const { respuestas } = req.body;
@@ -153,7 +171,7 @@ The image should be warm, modern, and inspiring, with a balanced composition.
     }
 
     console.log("✅ Image URL:", imageUrl);
-    res.json({ image_url: imageUrl, remaining: req.userSession.counter });
+    res.json({ image_url: imageUrl, remaining: countersBySede[sede] });
   } catch (error) {
     console.error("❌ Error generating image:", error.response?.data || error.message);
     res.status(500).json({ error: "Error interno del servidor" });

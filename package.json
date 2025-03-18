@@ -1,0 +1,21 @@
+{
+  "name": "be-healthy-ai",
+  "version": "1.0.0",
+  "description": "Generador de imágenes motivacionales basado en respuestas de los empleados",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@leonardo-ai/sdk": "^4.20.0",
+    "axios": "^1.8.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "author": "Stephane Avril",
+  "license": "ISC"
+}

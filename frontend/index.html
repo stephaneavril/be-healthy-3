@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Imágenes AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Generador de Imágenes AI</h1>
+        </header>
+        <section class="form-section">
+            <div class="form-group">
+                <label id="input1-label">¿Qué alimento saludable prefieres?</label>
+                <input id="input1" type="text" placeholder="Ejemplo: Fruta fresca">
+            </div>
+            <div class="form-group">
+                <label id="input2-label">¿Qué actividad física disfrutas?</label>
+                <input id="input2" type="text" placeholder="Ejemplo: Correr o Yoga">
+            </div>
+            <div class="form-group">
+                <label id="input3-label">¿Cómo cuidas tu salud mental?</label>
+                <input id="input3" type="text" placeholder="Ejemplo: Meditación">
+            </div>
+            <div class="form-group">
+                <label id="input4-label">¿Qué haces para descansar adecuadamente?</label>
+                <input id="input4" type="text" placeholder="Ejemplo: Dormir 8 horas">
+            </div>
+            <button id="generarBtn">Generar Imagen</button>
+            <div id="status">
+                <span class="spinner"></span> Generando imagen, por favor espere...
+            </div>
+        </section>
+        <section class="result-section">
+            <div id="imageContainer">
+                <img id="outputImage" src="" alt="Imagen generada aparecerá aquí">
+                <button id="printButton">Imprimir</button>
+            </div>
+        </section>
+        <footer>
+            <p>© 2025 Generador de Imágenes TEAMS AI. https://www.teams.com.mx Todos los derechos reservados.</p>
+        </footer>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

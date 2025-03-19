@@ -20,40 +20,44 @@ if (!LEONARDO_API_KEY) {
   process.exit(1);
 }
 
-// ----- Autenticación y contador -----
+// -------------------- Autenticación y contador --------------------
+
+// Sedes autorizadas (nombre y contraseña)
 const allowedSedes = [
   { sede: "sede1", password: "clave1" },
   { sede: "sede2", password: "clave2" }
 ];
 
+// Almacenamiento en memoria:
+// sessionsByToken: token -> { sede }
+// countersBySede: sede -> número de imágenes disponibles
 const sessionsByToken = {};
 const countersBySede = {};
 
+// Endpoint de login
 app.post("/login", (req, res) => {
   const { sede, password } = req.body;
   if (!sede || !password) {
     return res.status(400).json({ error: "Sede y contraseña son requeridos." });
   }
-
   const user = allowedSedes.find(u => u.sede === sede && u.password === password);
   if (!user) {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
-
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
-
+  // Reutiliza token si ya existe para la misma sede
   const existingToken = Object.keys(sessionsByToken).find(t => sessionsByToken[t].sede === sede);
   if (existingToken) {
     return res.json({ token: existingToken, counter: countersBySede[sede] });
   }
-
   const token = crypto.randomBytes(16).toString("hex");
   sessionsByToken[token] = { sede };
   return res.json({ token, counter: countersBySede[sede] });
 });
 
+// Middleware para autenticar
 function authenticate(req, res, next) {
   const token = req.header("x-auth-token");
   if (!token || !sessionsByToken[token]) {
@@ -63,6 +67,7 @@ function authenticate(req, res, next) {
   next();
 }
 
+// -------------------- Endpoint /generate (protegido) --------------------
 app.post("/generate", authenticate, async (req, res) => {
   const sede = req.sede;
   if (countersBySede[sede] === undefined) {
@@ -79,32 +84,31 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la ilustración." });
     }
 
+    // Construir un prompt sencillo y directo:
     const finalPrompt = `
 Crea una ilustración en estilo doodle minimalista que represente la motivación y emociones 
-del usuario sobre la construcción de hábitos saludables. 
+del usuario sobre la construcción de hábitos saludables.
 Respuestas del usuario:
 1) "${respuestas[0]}"
 2) "${respuestas[1]}"
 3) "${respuestas[2]}"
 4) "${respuestas[3]}"
 
-La imagen debe transmitir sentimientos y aspiraciones en relación con el bienestar, 
-usando símbolos sutiles y orgánicos. 
-Incluye una frase de empoderamiento en español inspirada en estas respuestas, 
-de manera breve. 
-No uses fotorealismo ni 3D; utiliza un estilo line-art doodle minimal, con trazos simples y colores suaves.
+La imagen debe ser simple, con trazos lineales y un diseño limpio. 
+Incluye una breve frase de empoderamiento en español que resuma la esencia del bienestar y el crecimiento personal.
+No uses fotorealismo ni efectos 3D; utiliza un diseño minimal y colorido.
     `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Modelo "stable_diffusion_1_5" (en muchos casos funciona en Leonardo)
+    // Llamada a la API de Leonardo usando Stable Diffusion 1.5
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
         alchemy: true,
-        height: 768,
-        width: 1024,
-        modelId: "stable_diffusion_1_5", 
+        height: 512,
+        width: 512,
+        modelId: "stable_diffusion_1_5",  // Usamos el modelo Stable Diffusion 1.5, que es más sencillo
         num_images: 1,
         presetStyle: "NONE",
         prompt: finalPrompt,
@@ -126,6 +130,7 @@ No uses fotorealismo ni 3D; utiliza un estilo line-art doodle minimal, con trazo
     const generationId = postResponse.data.sdGenerationJob.generationId;
     console.log("Generation ID:", generationId);
 
+    // Polling para obtener la imagen generada
     let imageUrl = null;
     let pollAttempts = 0;
     const maxAttempts = 20;
@@ -168,12 +173,12 @@ No uses fotorealismo ni 3D; utiliza un estilo line-art doodle minimal, con trazo
   }
 });
 
+// -------------------- Endpoint /print-label (público) --------------------
 app.get("/print-label", (req, res) => {
   const imageUrl = req.query.image;
   if (!imageUrl) {
     return res.status(400).send("Falta la URL de la imagen en el parámetro 'image'");
   }
-
   const html = `
   <!DOCTYPE html>
   <html>

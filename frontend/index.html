@@ -2,13 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Generador de Imágenes AI</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Generador de Imágenes Vibrantes</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="style.css">
   <style>
-    /* Estilos adicionales para la interfaz de login y la app */
+    /* Sección de Login */
     #loginSection {
       margin: 2em auto;
       max-width: 400px;
@@ -38,7 +38,7 @@
     #loginBtn {
       width: 100%;
       padding: 12px;
-      background: linear-gradient(to right, #9370db, #e1bee7);
+      background: linear-gradient(to right, #ff5f6d, #ffc371);
       color: white;
       border: none;
       border-radius: 4px;
@@ -49,10 +49,10 @@
       margin-top: 1em;
     }
     #loginBtn:hover {
-      background: linear-gradient(to right, #800080, #d8bfd8);
+      background: linear-gradient(to right, #ff9966, #ff5e62);
       transform: translateY(-2px);
     }
-    /* Sección principal oculta hasta login */
+    /* Ocultar appSection hasta login */
     #appSection {
       display: none;
     }
@@ -61,13 +61,12 @@
       font-weight: 600;
       margin-bottom: 1em;
     }
-    /* Los estilos previos para .container, header, form-section, result-section, etc. se mantienen */
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Generador de Imágenes AI</h1>
+      <h1>Generador de Imágenes Vibrantes</h1>
     </header>
 
     <!-- Sección de LOGIN -->
@@ -84,27 +83,29 @@
       <button id="loginBtn">Login</button>
     </section>
 
-    <!-- Sección de la APP (oculta hasta login) -->
+    <!-- Sección Principal -->
     <section id="appSection">
       <div id="counterInfo"></div>
+
       <section class="form-section">
-        <!-- Nuevas preguntas para orientar la generación de imágenes en estilo boho/vintage -->
+        <!-- 4 preguntas (1 palabra cada una) -->
         <div class="form-group">
-          <label for="input1">¿Qué elemento artístico deseas resaltar?</label>
-          <input id="input1" type="text" placeholder="Ej: Silueta abstracta">
+          <label>Hábito saludable (1 palabra)</label>
+          <input id="input1" type="text" placeholder="Ej: yoga, fruta, correr">
         </div>
         <div class="form-group">
-          <label for="input2">¿Qué paleta de colores prefieres? (ej: beige, terracota, naranja)</label>
-          <input id="input2" type="text" placeholder="Ej: beige, terracota, naranja">
+          <label>Estilo/Color preferido (1 palabra)</label>
+          <input id="input2" type="text" placeholder="Ej: vibrante, pop, moderno">
         </div>
         <div class="form-group">
-          <label for="input3">¿Qué estilo de ilustración te agrada? (ej: minimalista, lineal, boho)</label>
-          <input id="input3" type="text" placeholder="Ej: minimalista, lineal, boho">
+          <label>Emoción a transmitir (1 palabra)</label>
+          <input id="input3" type="text" placeholder="Ej: alegria, energia, pasion">
         </div>
         <div class="form-group">
-          <label for="input4">¿Qué frase inspiradora te gustaría incluir?</label>
-          <input id="input4" type="text" placeholder="Ej: Aprovecha tu tiempo, crece cada día">
+          <label>Palabra inspiradora (1 palabra)</label>
+          <input id="input4" type="text" placeholder="Ej: Crece, Avanza, Vive">
         </div>
+
         <button id="generarBtn">Generar Imagen</button>
         <div id="status">
           <span class="spinner"></span> Generando imagen, por favor espere...
@@ -136,11 +137,10 @@
     const outputImage = document.getElementById("outputImage");
     const counterInfo = document.getElementById("counterInfo");
 
-    // Ocultamos el status y el botón de imprimir inicialmente
     statusDiv.style.display = "none";
     printBtn.style.display = "none";
 
-    // 1. LOGIN
+    // LOGIN
     loginBtn.addEventListener("click", async () => {
       const sede = document.getElementById("sedeInput").value.trim();
       const password = document.getElementById("passwordInput").value.trim();
@@ -155,7 +155,6 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sede, password })
         });
-
         if (!resp.ok) {
           const errorData = await resp.json();
           alert("Error al iniciar sesión: " + (errorData.error || resp.statusText));
@@ -167,14 +166,13 @@
         loginSection.style.display = "none";
         appSection.style.display = "block";
         counterInfo.textContent = "Te quedan " + data.counter + " imágenes disponibles.";
-
       } catch (error) {
         console.error("Error al iniciar sesión:", error);
         alert("Error al iniciar sesión. Revisa la consola.");
       }
     });
 
-    // 2. GENERAR IMAGEN
+    // GENERAR IMAGEN
     generarBtn.addEventListener("click", async () => {
       if (!authToken) {
         alert("No has iniciado sesión.");
@@ -187,7 +185,7 @@
       const r4 = document.getElementById("input4").value.trim();
 
       if (!r1 || !r2 || !r3 || !r4) {
-        alert("Por favor, completa las 4 respuestas.");
+        alert("Por favor, completa las 4 respuestas (1 palabra cada una).");
         return;
       }
 
@@ -228,7 +226,7 @@
       }
     });
 
-    // 3. IMPRIMIR
+    // IMPRIMIR
     printBtn.addEventListener("click", () => {
       const imageUrl = outputImage.src;
       if (!imageUrl) {

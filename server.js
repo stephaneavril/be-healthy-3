@@ -21,19 +21,20 @@ if (!LEONARDO_API_KEY) {
 }
 
 // ----- Autenticación y contador -----
+
 // Definición de sedes autorizadas (nombre y contraseña)
 const allowedSedes = [
   { sede: "sede1", password: "clave1" },
   { sede: "sede2", password: "clave2" }
 ];
 
-// Almacenamiento en memoria:
+// Almacenamiento en memoria de sesiones
 // sessionsByToken: token -> { sede }
-// countersBySede: sede -> contador (compartido entre todas las sesiones de esa sede)
+// countersBySede: sede -> contador compartido
 const sessionsByToken = {};
 const countersBySede = {};
 
-// Endpoint de login para autenticar
+// Endpoint de login
 app.post("/login", (req, res) => {
   const { sede, password } = req.body;
   if (!sede || !password) {
@@ -45,35 +46,34 @@ app.post("/login", (req, res) => {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
 
-  // Si la sede no tiene un contador inicializado, lo ponemos en 50
+  // Inicializa o reutiliza el contador en 50
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
 
-  // Revisar si ya existe un token para esta sede, para reutilizarlo
-  let existingToken = Object.keys(sessionsByToken).find(t => sessionsByToken[t].sede === sede);
+  // Reutilizar el token si ya existe para esa sede
+  const existingToken = Object.keys(sessionsByToken).find(t => sessionsByToken[t].sede === sede);
   if (existingToken) {
     return res.json({ token: existingToken, counter: countersBySede[sede] });
-  } else {
-    // Generar un token nuevo y guardarlo
-    const token = crypto.randomBytes(16).toString("hex");
-    sessionsByToken[token] = { sede };
-    return res.json({ token, counter: countersBySede[sede] });
   }
+
+  // Generar token nuevo
+  const token = crypto.randomBytes(16).toString("hex");
+  sessionsByToken[token] = { sede };
+  return res.json({ token, counter: countersBySede[sede] });
 });
 
-// Middleware para autenticar usando el token enviado en la cabecera x-auth-token
+// Middleware para autenticar
 function authenticate(req, res, next) {
   const token = req.header("x-auth-token");
   if (!token || !sessionsByToken[token]) {
     return res.status(401).json({ error: "No autorizado. Inicie sesión." });
   }
   req.sede = sessionsByToken[token].sede;
-  req.token = token;
   next();
 }
 
-// ----- Endpoint para generar imagen (protegido) -----
+// Endpoint protegido /generate
 app.post("/generate", authenticate, async (req, res) => {
   const sede = req.sede;
   if (countersBySede[sede] === undefined) {
@@ -82,33 +82,31 @@ app.post("/generate", authenticate, async (req, res) => {
   if (countersBySede[sede] <= 0) {
     return res.status(403).json({ error: "Límite de generación de imágenes alcanzado." });
   }
-  // Decrementamos el contador compartido para la sede
+  // Decrementar contador
   countersBySede[sede]--;
 
   try {
     const { respuestas } = req.body;
     if (!respuestas || respuestas.length < 4) {
-      return res.status(400).json({ error: "Se requieren 4 respuestas para generar la imagen" });
+      return res.status(400).json({ error: "Se requieren 4 respuestas (1 palabra cada una)." });
     }
 
-    // Se espera que las respuestas sean:
-    // respuestas[0] = Elemento artístico a resaltar (ej.: "silueta abstracta")
-    // respuestas[1] = Paleta de colores deseada (ej.: "beige, terracota, naranja")
-    // respuestas[2] = Estilo de ilustración (ej.: "minimalista, lineal, boho")
-    // respuestas[3] = Frase inspiradora (ej.: "Aprovecha tu tiempo, crece cada día")
+    // respuestas[0] = hábito saludable (ej: "yoga", "fruta")
+    // respuestas[1] = estilo/color preferido (ej: "vibrante", "pop", "moderno")
+    // respuestas[2] = emoción (ej: "alegria", "energia", "pasión")
+    // respuestas[3] = palabra inspiradora (ej: "Crece", "Avanza")
+
+    // Prompt enfocado en un estilo vibrante y colorido
     const finalPrompt = `
-Minimalist line-art illustration in vintage boho poster style, 
-with an earthy color palette (${respuestas[1]}). 
-Main visual element: ${respuestas[0]}. 
-Style: ${respuestas[2]}. 
-Incorporate the inspirational phrase: "${respuestas[3]}" in elegant typography.
-Clean, vector-like design with hand-drawn, abstract elements that evoke calm and balance.
-Avoid photorealistic details, 3D effects, or cluttered backgrounds.
+A vibrant, colorful digital illustration with a ${respuestas[1]} modern style, focusing on healthy living through ${respuestas[0]}.
+Use bright and lively colors (pink, orange, turquoise, neon, etc.) and a dynamic composition.
+Convey a sense of ${respuestas[2]} and include the Spanish word "${respuestas[3]}" in large, bold typography.
+No photorealism, no 3D, minimal text besides that one word. Abstract shapes, swirling lines, energetic feel.
     `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Enviar solicitud de generación a Leonardo
+    // Llamada a la API de Leonardo
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
@@ -136,12 +134,12 @@ Avoid photorealistic details, 3D effects, or cluttered backgrounds.
     const generationId = postResponse.data.sdGenerationJob.generationId;
     console.log("Generation ID:", generationId);
 
-    // Polling para obtener la imagen generada
+    // Polling
     let imageUrl = null;
     let pollAttempts = 0;
     const maxAttempts = 20;
     while (pollAttempts < maxAttempts && !imageUrl) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos
+      await new Promise(resolve => setTimeout(resolve, 5000));
       pollAttempts++;
       console.log(`Polling attempt ${pollAttempts} for generation ID ${generationId}...`);
 
@@ -179,7 +177,7 @@ Avoid photorealistic details, 3D effects, or cluttered backgrounds.
   }
 });
 
-// ----- Endpoint para imprimir (sin protección adicional) -----
+// Endpoint público /print-label
 app.get("/print-label", (req, res) => {
   const imageUrl = req.query.image;
   if (!imageUrl) {

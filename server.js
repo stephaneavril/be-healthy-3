@@ -84,33 +84,31 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la ilustración." });
     }
 
-    // Construir un prompt sencillo y directo:
+    // Construir el prompt actualizado
     const finalPrompt = `
-Crea una ilustración en estilo doodle minimalista que represente la motivación y emociones 
-del usuario sobre la construcción de hábitos saludables.
+Crea una ilustración en estilo doodle minimalista que represente la motivación y emociones del usuario sobre la construcción de hábitos saludables.
 Respuestas del usuario:
 1) "${respuestas[0]}"
 2) "${respuestas[1]}"
 3) "${respuestas[2]}"
 4) "${respuestas[3]}"
-
-La imagen debe ser simple, con trazos lineales y un diseño limpio. 
+La imagen debe ser simple, con trazos lineales, diseño limpio y un toque colorido.
 Incluye una breve frase de empoderamiento en español que resuma la esencia del bienestar y el crecimiento personal.
-No uses fotorealismo ni efectos 3D; utiliza un diseño minimal y colorido.
+No uses fotorealismo, 3D ni efectos hiperrealistas.
     `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Llamada a la API de Leonardo usando Stable Diffusion 1.5
+    // Llamada a la API de Leonardo usando el modelo Stable Diffusion 1.5
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
         alchemy: true,
         height: 512,
         width: 512,
-        modelId: "stable_diffusion_1_5",  // Usamos el modelo Stable Diffusion 1.5, que es más sencillo
+        modelId: "stable_diffusion_1_5",  // Modelo Stable Diffusion 1.5
         num_images: 1,
-        presetStyle: "NONE",
+        presetStyle: "NONE", // No se aplica preset, ya definimos el estilo en el prompt
         prompt: finalPrompt,
         negative_prompt: "photorealistic, realistic, 3D, hyperrealistic, painting, photograph, cinematic lighting, highly detailed, intricate shading, realism"
       },
@@ -124,7 +122,7 @@ No uses fotorealismo ni efectos 3D; utiliza un diseño minimal y colorido.
     );
 
     if (!postResponse.data || !postResponse.data.sdGenerationJob) {
-      throw new Error("No generation job returned from API");
+      throw new Error("No se retornó un job de generación desde la API");
     }
 
     const generationId = postResponse.data.sdGenerationJob.generationId;
@@ -162,7 +160,7 @@ No uses fotorealismo ni efectos 3D; utiliza un diseño minimal y colorido.
     }
 
     if (!imageUrl) {
-      return res.status(500).json({ error: "No image returned from API después de varios intentos" });
+      return res.status(500).json({ error: "No se obtuvo imagen de la API después de varios intentos" });
     }
 
     console.log("✅ Image URL:", imageUrl);

@@ -28,13 +28,12 @@ const allowedSedes = [
   { sede: "sede2", password: "clave2" }
 ];
 
-// Almacenamiento en memoria:
-// sessionsByToken: token -> { sede }
-// countersBySede: sede -> número de imágenes restantes (compartido entre todas las sesiones de esa sede)
+// Sesiones: token -> { sede }
+// Contador: sede -> número de imágenes restantes
 const sessionsByToken = {};
 const countersBySede = {};
 
-// Endpoint de login para autenticar
+// Endpoint /login
 app.post("/login", (req, res) => {
   const { sede, password } = req.body;
   if (!sede || !password) {
@@ -46,24 +45,24 @@ app.post("/login", (req, res) => {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
 
-  // Inicializa el contador en 50 si no existe para la sede
+  // Inicializa el contador en 50 si no existe para esta sede
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
 
-  // Reutiliza token si ya existe para la misma sede
+  // Reutilizar token si ya existe
   const existingToken = Object.keys(sessionsByToken).find(t => sessionsByToken[t].sede === sede);
   if (existingToken) {
     return res.json({ token: existingToken, counter: countersBySede[sede] });
   }
 
-  // Genera un token nuevo y guárdalo
+  // Generar token nuevo
   const token = crypto.randomBytes(16).toString("hex");
   sessionsByToken[token] = { sede };
   return res.json({ token, counter: countersBySede[sede] });
 });
 
-// Middleware para autenticar usando el token enviado en la cabecera x-auth-token
+// Middleware para autenticar
 function authenticate(req, res, next) {
   const token = req.header("x-auth-token");
   if (!token || !sessionsByToken[token]) {
@@ -73,17 +72,16 @@ function authenticate(req, res, next) {
   next();
 }
 
-// -------------------- Endpoint para generar imagen (protegido) --------------------
+// -------------------- Endpoint /generate (protegido) --------------------
 app.post("/generate", authenticate, async (req, res) => {
   const sede = req.sede;
-  // Asegurarse de que la sede tenga contador
+  // Verificar contador
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
   if (countersBySede[sede] <= 0) {
     return res.status(403).json({ error: "Límite de generación de imágenes alcanzado." });
   }
-  // Decrementa el contador compartido para la sede
   countersBySede[sede]--;
 
   try {
@@ -92,38 +90,38 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la ilustración." });
     }
 
-    // Construir el prompt basado en las respuestas del usuario.
-    // Preguntas:
-    // 1. ¿Qué te motiva todos los días a ser tu mejor versión?
-    // 2. ¿Qué hábitos saludables tiene tu mejor versión?
-    // 3. ¿Qué te detiene hoy de ser tu mejor versión?
-    // 4. ¿Qué consejo le darías a tu yo de hace 5 años?
+    // Construimos el prompt final (estilo doodle minimal, etc.)
     const finalPrompt = `
-Crea una ilustración en estilo doodle minimalista que represente la motivación y emociones del usuario sobre la construcción de hábitos saludables.
+Crea una ilustración en estilo doodle minimalista que represente la motivación y emociones 
+del usuario sobre la construcción de hábitos saludables. 
 Respuestas del usuario:
 1) "${respuestas[0]}"
 2) "${respuestas[1]}"
 3) "${respuestas[2]}"
 4) "${respuestas[3]}"
-La imagen debe transmitir sentimientos y aspiraciones en relación con el bienestar, usando símbolos sutiles y orgánicos.
-Incorpora una frase de manifestación o empoderamiento en español inspirada en estas respuestas, de manera breve.
-No uses fotorealismo, ni efectos 3D; utiliza un estilo line-art doodle minimal, con trazos simples y colores suaves.
+
+La imagen debe transmitir sentimientos y aspiraciones en relación con el bienestar, 
+usando símbolos sutiles y orgánicos. 
+Incluye una frase de empoderamiento en español inspirada en estas respuestas, 
+de manera breve. 
+No uses fotorealismo ni 3D; utiliza un estilo line-art doodle minimal, con trazos simples y colores suaves.
     `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Llamada a la API de Leonardo usando el modelo "leonardo_signature" y un negative prompt para evitar realismo
+    // Llamada a la API de Leonardo con "Leonardo Diffusion XL"
+    // Ajusta "leonardo_diffusion_xl" si ese es el ID real en tu Leonardo
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
         alchemy: true,
         height: 768,
         width: 1024,
-        modelId: "leonardo_signature", // Cambiado para un estilo menos realista
+        modelId: "leonardo_diffusion_xl", // <-- Ajusta si tu ID real es distinto
         num_images: 1,
         presetStyle: "NONE",
         prompt: finalPrompt,
-        negative_prompt: "photorealistic, realistic, 3D, hyperrealistic, painting, photograph, cinematic lighting, highly detailed, intricate shading"
+        negative_prompt: "photorealistic, realistic, 3D, hyperrealistic, painting, photograph, cinematic lighting, highly detailed, intricate shading, realism"
       },
       {
         headers: {
@@ -141,12 +139,12 @@ No uses fotorealismo, ni efectos 3D; utiliza un estilo line-art doodle minimal, 
     const generationId = postResponse.data.sdGenerationJob.generationId;
     console.log("Generation ID:", generationId);
 
-    // Polling para obtener la imagen generada
+    // Polling para obtener la imagen
     let imageUrl = null;
     let pollAttempts = 0;
     const maxAttempts = 20;
     while (pollAttempts < maxAttempts && !imageUrl) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos
+      await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5s
       pollAttempts++;
       console.log(`Polling attempt ${pollAttempts} for generation ID ${generationId}...`);
 
@@ -173,7 +171,7 @@ No uses fotorealismo, ni efectos 3D; utiliza un estilo line-art doodle minimal, 
     }
 
     if (!imageUrl) {
-      return res.status(500).json({ error: "No image returned from API after polling" });
+      return res.status(500).json({ error: "No image returned from API después de varios intentos" });
     }
 
     console.log("✅ Image URL:", imageUrl);
@@ -228,6 +226,7 @@ app.get("/print-label", (req, res) => {
   res.send(html);
 });
 
+// Iniciar el servidor
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });

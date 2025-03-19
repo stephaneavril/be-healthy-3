@@ -21,7 +21,6 @@ if (!LEONARDO_API_KEY) {
 }
 
 // ----- Autenticación y contador -----
-
 // Definición de sedes autorizadas (nombre y contraseña)
 const allowedSedes = [
   { sede: "sede1", password: "clave1" },
@@ -51,7 +50,7 @@ app.post("/login", (req, res) => {
     countersBySede[sede] = 50;
   }
 
-  // Revisar si ya existe un token para esta sede, reutilizarlo
+  // Revisar si ya existe un token para esta sede, para reutilizarlo
   let existingToken = Object.keys(sessionsByToken).find(t => sessionsByToken[t].sede === sede);
   if (existingToken) {
     return res.json({ token: existingToken, counter: countersBySede[sede] });
@@ -75,19 +74,15 @@ function authenticate(req, res, next) {
 }
 
 // ----- Endpoint para generar imagen (protegido) -----
-
 app.post("/generate", authenticate, async (req, res) => {
   const sede = req.sede;
-
-  // Asegurarse de que la sede tenga contador
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
-
   if (countersBySede[sede] <= 0) {
     return res.status(403).json({ error: "Límite de generación de imágenes alcanzado." });
   }
-  // Decrementar el contador compartido para la sede
+  // Decrementamos el contador compartido para la sede
   countersBySede[sede]--;
 
   try {
@@ -96,14 +91,20 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la imagen" });
     }
 
+    // Se espera que las respuestas sean:
+    // respuestas[0] = Elemento artístico a resaltar (ej.: "silueta abstracta")
+    // respuestas[1] = Paleta de colores deseada (ej.: "beige, terracota, naranja")
+    // respuestas[2] = Estilo de ilustración (ej.: "minimalista, lineal, boho")
+    // respuestas[3] = Frase inspiradora (ej.: "Aprovecha tu tiempo, crece cada día")
     const finalPrompt = `
-A vibrant and artistic digital illustration of a person engaging in a healthy lifestyle:
-- Eating: ${respuestas[0]} (fresh food, colorful composition).
-- Exercise: ${respuestas[1]} (running, yoga, or other fitness activity).
-- Mental Wellness: ${respuestas[2]} (calm expression, meditation).
-- Rest: ${respuestas[3]} (soft lighting, peaceful setting).
-The image should be warm, modern, and inspiring, with a balanced composition.
-`;
+Minimalist line-art illustration in vintage boho poster style, 
+with an earthy color palette (${respuestas[1]}). 
+Main visual element: ${respuestas[0]}. 
+Style: ${respuestas[2]}. 
+Incorporate the inspirational phrase: "${respuestas[3]}" in elegant typography.
+Clean, vector-like design with hand-drawn, abstract elements that evoke calm and balance.
+Avoid photorealistic details, 3D effects, or cluttered backgrounds.
+    `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
@@ -138,7 +139,7 @@ The image should be warm, modern, and inspiring, with a balanced composition.
     // Polling para obtener la imagen generada
     let imageUrl = null;
     let pollAttempts = 0;
-    const maxAttempts = 20; // Ajusta según necesidad
+    const maxAttempts = 20;
     while (pollAttempts < maxAttempts && !imageUrl) {
       await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos
       pollAttempts++;
@@ -179,7 +180,6 @@ The image should be warm, modern, and inspiring, with a balanced composition.
 });
 
 // ----- Endpoint para imprimir (sin protección adicional) -----
-
 app.get("/print-label", (req, res) => {
   const imageUrl = req.query.image;
   if (!imageUrl) {

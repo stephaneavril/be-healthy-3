@@ -2,22 +2,13 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Generador de Imágenes AI</title>
-  <!-- Fuentes y estilos -->
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-  <!-- Tu hoja de estilos principal -->
   <link rel="stylesheet" href="style.css">
-
-  <!-- Estilos adicionales para el login -->
   <style>
-    /* Ocultamos la sección de la app hasta hacer login */
-    #appSection {
-      display: none;
-    }
-
-    /* Estilo para la sección de login */
+    /* Estilos adicionales para la interfaz de login y la app */
     #loginSection {
       margin: 2em auto;
       max-width: 400px;
@@ -61,13 +52,16 @@
       background: linear-gradient(to right, #800080, #d8bfd8);
       transform: translateY(-2px);
     }
-
-    /* Contador centrado */
+    /* Sección principal oculta hasta login */
+    #appSection {
+      display: none;
+    }
     #counterInfo {
       text-align: center;
       font-weight: 600;
       margin-bottom: 1em;
     }
+    /* Los estilos previos para .container, header, form-section, result-section, etc. se mantienen */
   </style>
 </head>
 <body>
@@ -90,30 +84,28 @@
       <button id="loginBtn">Login</button>
     </section>
 
-    <!-- Sección PRINCIPAL de la app (oculta hasta login) -->
+    <!-- Sección de la APP (oculta hasta login) -->
     <section id="appSection">
-      <div id="counterInfo"></div> <!-- Aquí mostraremos el contador -->
-
+      <div id="counterInfo"></div>
       <section class="form-section">
+        <!-- Nuevas preguntas para orientar la generación de imágenes en estilo boho/vintage -->
         <div class="form-group">
-          <label id="input1-label">¿Qué alimento saludable prefieres?</label>
-          <input id="input1" type="text" placeholder="Ejemplo: Fruta fresca">
+          <label for="input1">¿Qué elemento artístico deseas resaltar?</label>
+          <input id="input1" type="text" placeholder="Ej: Silueta abstracta">
         </div>
         <div class="form-group">
-          <label id="input2-label">¿Qué actividad física disfrutas?</label>
-          <input id="input2" type="text" placeholder="Ejemplo: Correr o Yoga">
+          <label for="input2">¿Qué paleta de colores prefieres? (ej: beige, terracota, naranja)</label>
+          <input id="input2" type="text" placeholder="Ej: beige, terracota, naranja">
         </div>
         <div class="form-group">
-          <label id="input3-label">¿Cómo cuidas tu salud mental?</label>
-          <input id="input3" type="text" placeholder="Ejemplo: Meditación">
+          <label for="input3">¿Qué estilo de ilustración te agrada? (ej: minimalista, lineal, boho)</label>
+          <input id="input3" type="text" placeholder="Ej: minimalista, lineal, boho">
         </div>
         <div class="form-group">
-          <label id="input4-label">¿Qué haces para descansar adecuadamente?</label>
-          <input id="input4" type="text" placeholder="Ejemplo: Dormir 8 horas">
+          <label for="input4">¿Qué frase inspiradora te gustaría incluir?</label>
+          <input id="input4" type="text" placeholder="Ej: Aprovecha tu tiempo, crece cada día">
         </div>
         <button id="generarBtn">Generar Imagen</button>
-
-        <!-- Mensaje de estado de carga -->
         <div id="status">
           <span class="spinner"></span> Generando imagen, por favor espere...
         </div>
@@ -132,7 +124,6 @@
     </footer>
   </div>
 
-  <!-- SCRIPT -->
   <script>
     let authToken = null;
 
@@ -159,7 +150,6 @@
       }
 
       try {
-        // Petición POST a /login
         const resp = await fetch("/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -173,14 +163,9 @@
         }
 
         const data = await resp.json();
-        // Guardamos el token
         authToken = data.token;
-
-        // Ocultamos el login y mostramos la app
         loginSection.style.display = "none";
         appSection.style.display = "block";
-
-        // Mostramos cuántas imágenes quedan
         counterInfo.textContent = "Te quedan " + data.counter + " imágenes disponibles.";
 
       } catch (error) {
@@ -206,11 +191,8 @@
         return;
       }
 
-      // Mostramos el estado de carga y deshabilitamos el botón
       statusDiv.style.display = "block";
       generarBtn.disabled = true;
-
-      // Ocultamos la imagen previa
       outputImage.style.display = "none";
       printBtn.style.display = "none";
 
@@ -225,16 +207,13 @@
         });
 
         const data = await response.json();
-
-        // Ocultamos el estado de carga
         statusDiv.style.display = "none";
         generarBtn.disabled = false;
 
         if (data.image_url) {
           outputImage.src = data.image_url;
           outputImage.style.display = "block";
-          printBtn.style.display = "block";
-          // Actualizamos el contador
+          printBtn.style.display = "inline-block";
           counterInfo.textContent = "Te quedan " + data.remaining + " imágenes disponibles.";
         } else if (data.error) {
           alert("Error generando imagen: " + data.error);

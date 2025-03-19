@@ -2,71 +2,112 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Generador de Imágenes Vibrantes</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <title>Ilustración Doodle Minimalista</title>
   <link rel="stylesheet" href="style.css">
   <style>
-    /* Sección de Login */
-    #loginSection {
-      margin: 2em auto;
-      max-width: 400px;
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    header h1 {
+      text-align: center;
+      margin-bottom: 1em;
+      color: #333;
+    }
+    #loginSection, #appSection {
       border: 1px solid #ddd;
       border-radius: 8px;
       padding: 1em;
+      margin-bottom: 2em;
       background-color: #f9f9f9;
     }
-    #loginSection h2 {
+    #loginSection h2, #appSection h2 {
       text-align: center;
       margin-bottom: 1em;
+      color: #555;
     }
-    #loginSection .form-group {
+    .form-group {
       margin-bottom: 1em;
     }
-    #loginSection .form-group label {
+    label {
       font-weight: 600;
       margin-bottom: 0.5em;
       display: block;
+      color: #444;
     }
-    #loginSection .form-group input {
+    input[type="text"], input[type="password"], textarea {
       width: 100%;
       padding: 10px;
       border: 1px solid #ddd;
       border-radius: 4px;
     }
-    #loginBtn {
-      width: 100%;
+    button {
       padding: 12px;
-      background: linear-gradient(to right, #ff5f6d, #ffc371);
-      color: white;
       border: none;
       border-radius: 4px;
       cursor: pointer;
       font-size: 1em;
       transition: background 0.3s ease, transform 0.2s ease;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      display: block;
+      width: 100%;
       margin-top: 1em;
+      background: linear-gradient(to right, #8E2DE2, #4A00E0);
+      color: white;
     }
-    #loginBtn:hover {
-      background: linear-gradient(to right, #ff9966, #ff5e62);
+    button:hover {
       transform: translateY(-2px);
     }
-    /* Ocultar appSection hasta login */
-    #appSection {
+    #status {
+      text-align: center;
+      margin-top: 1em;
       display: none;
+      color: #555;
+    }
+    .spinner {
+      border: 4px solid rgba(0, 0, 0, 0.1);
+      border-left-color: #9370db;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    #imageContainer {
+      text-align: center;
+      margin-top: 2em;
+    }
+    #outputImage {
+      max-width: 100%;
+      border-radius: 8px;
+      display: none;
+    }
+    #printButton {
+      display: none;
+      background: linear-gradient(to right, #FF512F, #DD2476);
+      margin-top: 1em;
     }
     #counterInfo {
       text-align: center;
       font-weight: 600;
       margin-bottom: 1em;
+      color: #555;
     }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <h1>Generador de Imágenes Vibrantes</h1>
+      <h1>Ilustración Doodle Minimalista</h1>
     </header>
 
     <!-- Sección de LOGIN -->
@@ -83,46 +124,38 @@
       <button id="loginBtn">Login</button>
     </section>
 
-    <!-- Sección Principal -->
-    <section id="appSection">
+    <!-- Sección de la App (oculta hasta login) -->
+    <section id="appSection" style="display:none;">
+      <h2>Responde las 4 preguntas</h2>
       <div id="counterInfo"></div>
 
-      <section class="form-section">
-        <!-- 4 preguntas (1 palabra cada una) -->
-        <div class="form-group">
-          <label>Hábito saludable (1 palabra)</label>
-          <input id="input1" type="text" placeholder="Ej: yoga, fruta, correr">
-        </div>
-        <div class="form-group">
-          <label>Estilo/Color preferido (1 palabra)</label>
-          <input id="input2" type="text" placeholder="Ej: vibrante, pop, moderno">
-        </div>
-        <div class="form-group">
-          <label>Emoción a transmitir (1 palabra)</label>
-          <input id="input3" type="text" placeholder="Ej: alegria, energia, pasion">
-        </div>
-        <div class="form-group">
-          <label>Palabra inspiradora (1 palabra)</label>
-          <input id="input4" type="text" placeholder="Ej: Crece, Avanza, Vive">
-        </div>
+      <div class="form-group">
+        <label>1. ¿Qué te motiva todos los días a ser tu mejor versión?</label>
+        <input id="input1" type="text" placeholder="Escribe tu motivación aquí">
+      </div>
+      <div class="form-group">
+        <label>2. ¿Qué hábitos saludables tiene tu mejor versión?</label>
+        <input id="input2" type="text" placeholder="Ej: Hacer ejercicio, comer sano, meditar...">
+      </div>
+      <div class="form-group">
+        <label>3. ¿Qué te detiene hoy de ser tu mejor versión?</label>
+        <input id="input3" type="text" placeholder="Ej: Miedo, falta de tiempo, estrés...">
+      </div>
+      <div class="form-group">
+        <label>4. ¿Qué consejo le darías a tu yo de hace 5 años?</label>
+        <input id="input4" type="text" placeholder="Ej: Confía en ti, sé constante...">
+      </div>
 
-        <button id="generarBtn">Generar Imagen</button>
-        <div id="status">
-          <span class="spinner"></span> Generando imagen, por favor espere...
-        </div>
-      </section>
+      <button id="generarBtn">Generar Ilustración</button>
+      <div id="status">
+        <span class="spinner"></span> Generando imagen, por favor espera...
+      </div>
 
-      <section class="result-section">
-        <div id="imageContainer">
-          <img id="outputImage" src="" alt="Imagen generada aparecerá aquí">
-          <button id="printButton">Imprimir</button>
-        </div>
-      </section>
+      <div id="imageContainer">
+        <img id="outputImage" alt="Imagen generada aparecerá aquí">
+        <button id="printButton">Imprimir</button>
+      </div>
     </section>
-
-    <footer>
-      <p>© 2025 Generador de Imágenes TEAMS AI. <a href="https://www.teams.com.mx">www.teams.com.mx</a> Todos los derechos reservados.</p>
-    </footer>
   </div>
 
   <script>
@@ -137,10 +170,11 @@
     const outputImage = document.getElementById("outputImage");
     const counterInfo = document.getElementById("counterInfo");
 
+    // Al iniciar, ocultamos spinner e imagen
     statusDiv.style.display = "none";
     printBtn.style.display = "none";
 
-    // LOGIN
+    // 1. LOGIN
     loginBtn.addEventListener("click", async () => {
       const sede = document.getElementById("sedeInput").value.trim();
       const password = document.getElementById("passwordInput").value.trim();
@@ -172,20 +206,21 @@
       }
     });
 
-    // GENERAR IMAGEN
+    // 2. GENERAR ILUSTRACIÓN
     generarBtn.addEventListener("click", async () => {
       if (!authToken) {
         alert("No has iniciado sesión.");
         return;
       }
 
+      // Tomamos las 4 respuestas
       const r1 = document.getElementById("input1").value.trim();
       const r2 = document.getElementById("input2").value.trim();
       const r3 = document.getElementById("input3").value.trim();
       const r4 = document.getElementById("input4").value.trim();
 
       if (!r1 || !r2 || !r3 || !r4) {
-        alert("Por favor, completa las 4 respuestas (1 palabra cada una).");
+        alert("Por favor, responde las 4 preguntas.");
         return;
       }
 
@@ -219,14 +254,14 @@
           alert("Error generando imagen. Intenta de nuevo.");
         }
       } catch (error) {
-        console.error("Error generando la imagen:", error);
-        alert("Error generando la imagen. Revisa la consola.");
+        console.error("Error generando la ilustración:", error);
+        alert("Error generando la ilustración. Revisa la consola.");
         statusDiv.style.display = "none";
         generarBtn.disabled = false;
       }
     });
 
-    // IMPRIMIR
+    // 3. IMPRIMIR
     printBtn.addEventListener("click", () => {
       const imageUrl = outputImage.src;
       if (!imageUrl) {

@@ -20,20 +20,15 @@ if (!LEONARDO_API_KEY) {
   process.exit(1);
 }
 
-// -------------------- Autenticación y contador --------------------
-
-// Definición de sedes autorizadas (nombre y contraseña)
+// ----- Autenticación y contador -----
 const allowedSedes = [
   { sede: "sede1", password: "clave1" },
   { sede: "sede2", password: "clave2" }
 ];
 
-// Sesiones: token -> { sede }
-// Contador: sede -> número de imágenes restantes
 const sessionsByToken = {};
 const countersBySede = {};
 
-// Endpoint /login
 app.post("/login", (req, res) => {
   const { sede, password } = req.body;
   if (!sede || !password) {
@@ -45,24 +40,20 @@ app.post("/login", (req, res) => {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
 
-  // Inicializa el contador en 50 si no existe para esta sede
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
 
-  // Reutilizar token si ya existe
   const existingToken = Object.keys(sessionsByToken).find(t => sessionsByToken[t].sede === sede);
   if (existingToken) {
     return res.json({ token: existingToken, counter: countersBySede[sede] });
   }
 
-  // Generar token nuevo
   const token = crypto.randomBytes(16).toString("hex");
   sessionsByToken[token] = { sede };
   return res.json({ token, counter: countersBySede[sede] });
 });
 
-// Middleware para autenticar
 function authenticate(req, res, next) {
   const token = req.header("x-auth-token");
   if (!token || !sessionsByToken[token]) {
@@ -72,10 +63,8 @@ function authenticate(req, res, next) {
   next();
 }
 
-// -------------------- Endpoint /generate (protegido) --------------------
 app.post("/generate", authenticate, async (req, res) => {
   const sede = req.sede;
-  // Verificar contador
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
@@ -90,7 +79,6 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la ilustración." });
     }
 
-    // Construimos el prompt final (estilo doodle minimal, etc.)
     const finalPrompt = `
 Crea una ilustración en estilo doodle minimalista que represente la motivación y emociones 
 del usuario sobre la construcción de hábitos saludables. 
@@ -109,15 +97,14 @@ No uses fotorealismo ni 3D; utiliza un estilo line-art doodle minimal, con trazo
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Llamada a la API de Leonardo con "Leonardo Diffusion XL"
-    // Ajusta "leonardo_diffusion_xl" si ese es el ID real en tu Leonardo
+    // Modelo "stable_diffusion_1_5" (en muchos casos funciona en Leonardo)
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
         alchemy: true,
         height: 768,
         width: 1024,
-        modelId: "leonardo_diffusion_xl", // <-- Ajusta si tu ID real es distinto
+        modelId: "stable_diffusion_1_5", 
         num_images: 1,
         presetStyle: "NONE",
         prompt: finalPrompt,
@@ -139,12 +126,11 @@ No uses fotorealismo ni 3D; utiliza un estilo line-art doodle minimal, con trazo
     const generationId = postResponse.data.sdGenerationJob.generationId;
     console.log("Generation ID:", generationId);
 
-    // Polling para obtener la imagen
     let imageUrl = null;
     let pollAttempts = 0;
     const maxAttempts = 20;
     while (pollAttempts < maxAttempts && !imageUrl) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5s
+      await new Promise(resolve => setTimeout(resolve, 5000));
       pollAttempts++;
       console.log(`Polling attempt ${pollAttempts} for generation ID ${generationId}...`);
 
@@ -182,7 +168,6 @@ No uses fotorealismo ni 3D; utiliza un estilo line-art doodle minimal, con trazo
   }
 });
 
-// -------------------- Endpoint /print-label (público) --------------------
 app.get("/print-label", (req, res) => {
   const imageUrl = req.query.image;
   if (!imageUrl) {
@@ -226,7 +211,6 @@ app.get("/print-label", (req, res) => {
   res.send(html);
 });
 
-// Iniciar el servidor
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });

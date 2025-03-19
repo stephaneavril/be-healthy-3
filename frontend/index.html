@@ -1,50 +1,208 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generador de Imágenes AI</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>App con Login y Contador</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    h1, h2 {
+      color: #4f0088;
+    }
+    #loginForm, #appSection {
+      margin: 20px 0;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      max-width: 400px;
+    }
+    input {
+      display: block;
+      margin-bottom: 8px;
+      padding: 8px;
+      width: 100%;
+    }
+    button {
+      padding: 10px;
+      background-color: #6f00b0;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    button:hover {
+      background-color: #4f0088;
+    }
+    #appSection {
+      display: none; /* Oculto hasta que hagamos login */
+    }
+    #generatedImage {
+      max-width: 100%;
+      display: none;
+      margin-top: 15px;
+      border: 2px solid #ddd;
+      border-radius: 6px;
+    }
+    #printBtn {
+      display: none;
+      margin-top: 10px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>Generador de Imágenes AI</h1>
-        </header>
-        <section class="form-section">
-            <div class="form-group">
-                <label id="input1-label">¿Qué alimento saludable prefieres?</label>
-                <input id="input1" type="text" placeholder="Ejemplo: Fruta fresca">
-            </div>
-            <div class="form-group">
-                <label id="input2-label">¿Qué actividad física disfrutas?</label>
-                <input id="input2" type="text" placeholder="Ejemplo: Correr o Yoga">
-            </div>
-            <div class="form-group">
-                <label id="input3-label">¿Cómo cuidas tu salud mental?</label>
-                <input id="input3" type="text" placeholder="Ejemplo: Meditación">
-            </div>
-            <div class="form-group">
-                <label id="input4-label">¿Qué haces para descansar adecuadamente?</label>
-                <input id="input4" type="text" placeholder="Ejemplo: Dormir 8 horas">
-            </div>
-            <button id="generarBtn">Generar Imagen</button>
-            <div id="status">
-                <span class="spinner"></span> Generando imagen, por favor espere...
-            </div>
-        </section>
-        <section class="result-section">
-            <div id="imageContainer">
-                <img id="outputImage" src="" alt="Imagen generada aparecerá aquí">
-                <button id="printButton">Imprimir</button>
-            </div>
-        </section>
-        <footer>
-            <p>© 2025 Generador de Imágenes TEAMS AI. https://www.teams.com.mx Todos los derechos reservados.</p>
-        </footer>
-    </div>
-    <script src="script.js"></script>
+  <h1>Generador de Imágenes con Login</h1>
+
+  <!-- Formulario de Login -->
+  <div id="loginForm">
+    <h2>Iniciar Sesión</h2>
+    <label for="sedeInput">Sede</label>
+    <input type="text" id="sedeInput" placeholder="Ej: sede1" />
+    
+    <label for="passwordInput">Contraseña</label>
+    <input type="password" id="passwordInput" placeholder="Ej: clave1" />
+
+    <button id="loginBtn">Login</button>
+  </div>
+
+  <!-- Sección de la app (solo visible tras login) -->
+  <div id="appSection">
+    <h2>Generar Imagen</h2>
+    <p>Te quedan <span id="counterSpan"></span> imágenes disponibles.</p>
+
+    <label for="r1">¿Qué alimento saludable prefieres?</label>
+    <input type="text" id="r1" placeholder="Ej: Manzana" />
+    
+    <label for="r2">¿Qué actividad física disfrutas?</label>
+    <input type="text" id="r2" placeholder="Ej: Correr" />
+    
+    <label for="r3">¿Cómo cuidas tu salud mental?</label>
+    <input type="text" id="r3" placeholder="Ej: Meditar" />
+    
+    <label for="r4">¿Qué haces para descansar adecuadamente?</label>
+    <input type="text" id="r4" placeholder="Ej: Dormir 8 horas" />
+
+    <button id="generateBtn">Generar Imagen</button>
+
+    <img id="generatedImage" alt="Imagen generada" />
+    <button id="printBtn">Imprimir</button>
+  </div>
+
+  <script>
+    let authToken = null;
+
+    const loginForm = document.getElementById('loginForm');
+    const appSection = document.getElementById('appSection');
+    const loginBtn = document.getElementById('loginBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const printBtn = document.getElementById('printBtn');
+    const counterSpan = document.getElementById('counterSpan');
+    const generatedImage = document.getElementById('generatedImage');
+
+    // 1) LOGIN
+    loginBtn.addEventListener('click', async () => {
+      const sede = document.getElementById('sedeInput').value;
+      const password = document.getElementById('passwordInput').value;
+
+      if (!sede || !password) {
+        alert('Por favor, ingresa sede y contraseña.');
+        return;
+      }
+
+      try {
+        // Hacemos un POST a /login
+        const resp = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sede, password })
+        });
+
+        if (!resp.ok) {
+          const errorData = await resp.json();
+          alert('Error al iniciar sesión: ' + errorData.error);
+          return;
+        }
+
+        const data = await resp.json();
+        // Guardamos el token y el contador
+        authToken = data.token;
+        const counter = data.counter;
+
+        // Ocultamos formulario de login, mostramos la sección de la app
+        loginForm.style.display = 'none';
+        appSection.style.display = 'block';
+        counterSpan.textContent = counter;
+
+      } catch (err) {
+        console.error('Error al hacer login:', err);
+        alert('Error en la petición de login.');
+      }
+    });
+
+    // 2) GENERAR IMAGEN
+    generateBtn.addEventListener('click', async () => {
+      if (!authToken) {
+        alert('No has iniciado sesión.');
+        return;
+      }
+
+      // Tomamos los 4 valores
+      const r1 = document.getElementById('r1').value.trim();
+      const r2 = document.getElementById('r2').value.trim();
+      const r3 = document.getElementById('r3').value.trim();
+      const r4 = document.getElementById('r4').value.trim();
+
+      if (!r1 || !r2 || !r3 || !r4) {
+        alert('Por favor, completa las 4 respuestas.');
+        return;
+      }
+
+      try {
+        // Hacemos un POST a /generate con el token en la cabecera
+        const resp = await fetch('/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-auth-token': authToken
+          },
+          body: JSON.stringify({ respuestas: [r1, r2, r3, r4] })
+        });
+
+        if (!resp.ok) {
+          const errorData = await resp.json();
+          alert('Error generando imagen: ' + (errorData.error || resp.statusText));
+          return;
+        }
+
+        const data = await resp.json();
+        // Mostramos la imagen
+        generatedImage.src = data.image_url;
+        generatedImage.style.display = 'block';
+
+        // Mostramos botón de imprimir
+        printBtn.style.display = 'inline-block';
+
+        // Actualizamos el contador
+        counterSpan.textContent = data.remaining;
+
+      } catch (err) {
+        console.error('Error generando imagen:', err);
+        alert('Error al generar la imagen.');
+      }
+    });
+
+    // 3) IMPRIMIR
+    printBtn.addEventListener('click', () => {
+      const imageUrl = generatedImage.src;
+      if (!imageUrl) {
+        alert('No hay imagen para imprimir.');
+        return;
+      }
+      // Abrimos /print-label en otra pestaña
+      window.open('/print-label?image=' + encodeURIComponent(imageUrl), '_blank');
+    });
+  </script>
 </body>
 </html>

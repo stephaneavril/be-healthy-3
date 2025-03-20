@@ -81,20 +81,19 @@ app.post("/generate", authenticate, async (req, res) => {
     const r3 = respuestas[2] || "Sin respuesta";
     const r4 = respuestas[3] || "Sin respuesta";
 
-    // Prompt MUY enfocado a un estilo vectorial 2D, sin realismo:
+    // Prompt muy estricto hacia lo "doodle 2D"
     const finalPrompt = `
-Ilustración doodle minimalista en estilo vectorial 2D (line-art, colores planos suaves, sin sombras realistas).
-Muestra a un personaje estilo cartoon o silueta abstracta simbolizando la motivación: "${r1}" y hábitos saludables: "${r2}",
-superando el obstáculo: "${r3}". 
-Incluye una breve frase en español inspirada en "${r4}" (por ejemplo: "Sé constante", "Confía en ti").
-Fondo claro, paleta pastel, trazos sencillos, sin detalles fotorealistas. 
-Debe lucir amigable, orgánico y optimista, con elementos decorativos como hojas o líneas fluidas. 
-No uses realismo ni 3D.
+Ilustración 2D en estilo doodle minimalista, line-art con colores planos (no sombras realistas).
+Muestra un personaje cartoon (sin rasgos realistas) que represente la motivación: "${r1}" 
+y hábitos saludables: "${r2}", superando el obstáculo: "${r3}".
+Incluye una frase corta en español inspirada en "${r4}" (ejemplo: "Confía en ti", "Sé constante"), 
+pero escrita de forma muy simple (puede ser texto suelto o en una burbuja). 
+Fondo claro, paleta pastel. Sin realismo, sin detalles anatómicos, sin texturas fotográficas.
     `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Llamada a la API de Leonardo (modelo "Leonardo Diffusion")
+    // Llamada a la API de Leonardo, generando 2 imágenes para tener opciones
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
@@ -102,17 +101,47 @@ No uses realismo ni 3D.
         height: 512,
         width: 512,
         modelId: "b24e16ff-06e3-43eb-8d33-4416c2d75876",  // Leonardo Diffusion
-        num_images: 1,
+        num_images: 2,  // Generamos 2 imágenes para elegir
         presetStyle: "NONE",
         prompt: finalPrompt,
         negative_prompt: [
-          // Palabras que NO queremos
-          "photo", "photorealistic", "realistic", "hyperrealistic", "3D", "3d render",
-          "complex shading", "ultra-detailed", "dark lighting", "painting", "photograph",
-          "cinematic lighting", "complex background", "real life", "blurry", "distorted",
-          "sculpture", "statue", "model", "fashion", "face details", "detailed clothing",
-          "building", "architecture", "palm trees", "environment", "landscape", "shadows",
-          "detail", "real person", "woman in dress", "man in suit"
+          // Palabras que queremos evitar
+          "photo",
+          "photorealistic",
+          "realistic",
+          "hyperrealistic",
+          "3D",
+          "3d render",
+          "complex shading",
+          "ultra-detailed",
+          "dark lighting",
+          "painting",
+          "photograph",
+          "cinematic lighting",
+          "complex background",
+          "real life",
+          "blurry",
+          "distorted",
+          "sculpture",
+          "statue",
+          "model",
+          "face details",
+          "detailed clothing",
+          "building",
+          "architecture",
+          "landscape",
+          "shadows",
+          "detail",
+          "real person",
+          "woman in dress",
+          "man in suit",
+          "portrait",
+          "hyper detail",
+          "hyper realistic",
+          "photoreal",
+          "photo portrait",
+          "skin detail",
+          "anatomy"
         ].join(", ")
       },
       {
@@ -135,7 +164,11 @@ No uses realismo ni 3D.
     let imageUrl = null;
     let pollAttempts = 0;
     const maxAttempts = 20;
-    while (pollAttempts < maxAttempts && !imageUrl) {
+
+    // Vamos a guardar todas las imágenes que aparezcan
+    let generatedImages = [];
+
+    while (pollAttempts < maxAttempts && generatedImages.length === 0) {
       await new Promise(resolve => setTimeout(resolve, 5000));
       pollAttempts++;
       console.log(`Polling attempt ${pollAttempts} for generation ID ${generationId}...`);
@@ -157,17 +190,20 @@ No uses realismo ni 3D.
         pollResponse.data.generations_by_pk.generated_images &&
         pollResponse.data.generations_by_pk.generated_images.length > 0
       ) {
-        imageUrl = pollResponse.data.generations_by_pk.generated_images[0].url;
-        break;
+        generatedImages = pollResponse.data.generations_by_pk.generated_images.map(img => img.url);
       }
     }
 
-    if (!imageUrl) {
-      return res.status(500).json({ error: "No se obtuvo imagen de la API después de varios intentos" });
+    if (generatedImages.length === 0) {
+      return res.status(500).json({ error: "No se obtuvieron imágenes de la API después de varios intentos" });
     }
 
-    console.log("✅ Image URL:", imageUrl);
-    res.json({ image_url: imageUrl, remaining: countersBySede[sede] });
+    // Tomamos la primera imagen, o podríamos devolver varias
+    imageUrl = generatedImages[0];
+    console.log("✅ Image URLs:", generatedImages);
+
+    // Devolvemos la primera imagen y el contador restante
+    res.json({ image_url: imageUrl, remaining: countersBySede[sede], all_images: generatedImages });
   } catch (error) {
     console.error("❌ Error generating image:", error.response?.data || error.message);
     res.status(500).json({ error: "Error interno del servidor" });

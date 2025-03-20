@@ -44,6 +44,7 @@ app.post("/login", (req, res) => {
   if (!user) {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
+  // Si es la primera vez que esta sede hace login, inicializa su contador en 50
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
@@ -52,6 +53,7 @@ app.post("/login", (req, res) => {
   if (existingToken) {
     return res.json({ token: existingToken, counter: countersBySede[sede] });
   }
+  // Genera un nuevo token y lo guarda
   const token = crypto.randomBytes(16).toString("hex");
   sessionsByToken[token] = { sede };
   return res.json({ token, counter: countersBySede[sede] });
@@ -70,12 +72,15 @@ function authenticate(req, res, next) {
 // -------------------- Endpoint /generate (protegido) --------------------
 app.post("/generate", authenticate, async (req, res) => {
   const sede = req.sede;
+  // Asegura que haya un contador para la sede
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
+  // Verifica si la sede aún tiene créditos
   if (countersBySede[sede] <= 0) {
     return res.status(403).json({ error: "Límite de generación de imágenes alcanzado." });
   }
+  // Descuenta uno
   countersBySede[sede]--;
 
   try {
@@ -84,7 +89,7 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la ilustración." });
     }
 
-    // Construir el prompt actualizado
+    // Construir el prompt con enfoque doodle minimalista
     const finalPrompt = `
 Crea una ilustración en estilo doodle minimalista que represente la motivación y emociones del usuario sobre la construcción de hábitos saludables.
 Respuestas del usuario:
@@ -99,16 +104,16 @@ No uses fotorealismo, 3D ni efectos hiperrealistas.
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Llamada a la API de Leonardo usando el modelo Stable Diffusion 1.5
+    // Llamada a la API de Leonardo usando el modelo "Leonardo Diffusion"
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
         alchemy: true,
         height: 512,
         width: 512,
-        modelId: "stable_diffusion_1_5",  // Modelo Stable Diffusion 1.5
+        modelId: "b24e16ff-06e3-43eb-8d33-4416c2d75876",  // Leonardo Diffusion
         num_images: 1,
-        presetStyle: "NONE", // No se aplica preset, ya definimos el estilo en el prompt
+        presetStyle: "NONE", // No se aplica preset; definimos el estilo en el prompt
         prompt: finalPrompt,
         negative_prompt: "photorealistic, realistic, 3D, hyperrealistic, painting, photograph, cinematic lighting, highly detailed, intricate shading, realism"
       },
@@ -133,6 +138,7 @@ No uses fotorealismo, 3D ni efectos hiperrealistas.
     let pollAttempts = 0;
     const maxAttempts = 20;
     while (pollAttempts < maxAttempts && !imageUrl) {
+      // Espera 5 segundos antes de cada intento
       await new Promise(resolve => setTimeout(resolve, 5000));
       pollAttempts++;
       console.log(`Polling attempt ${pollAttempts} for generation ID ${generationId}...`);
@@ -164,6 +170,7 @@ No uses fotorealismo, 3D ni efectos hiperrealistas.
     }
 
     console.log("✅ Image URL:", imageUrl);
+    // Devolvemos la URL de la imagen y el contador restante
     res.json({ image_url: imageUrl, remaining: countersBySede[sede] });
   } catch (error) {
     console.error("❌ Error generating image:", error.response?.data || error.message);
@@ -214,6 +221,7 @@ app.get("/print-label", (req, res) => {
   res.send(html);
 });
 
+// Inicia el servidor
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });

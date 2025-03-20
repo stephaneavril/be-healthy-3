@@ -21,20 +21,14 @@ if (!LEONARDO_API_KEY) {
 }
 
 // -------------------- Autenticación y contador --------------------
-
-// Sedes autorizadas (nombre y contraseña)
 const allowedSedes = [
   { sede: "sede1", password: "clave1" },
   { sede: "sede2", password: "clave2" }
 ];
 
-// Almacenamiento en memoria:
-// sessionsByToken: token -> { sede }
-// countersBySede: sede -> número de imágenes disponibles
 const sessionsByToken = {};
 const countersBySede = {};
 
-// Endpoint de login
 app.post("/login", (req, res) => {
   const { sede, password } = req.body;
   if (!sede || !password) {
@@ -44,22 +38,18 @@ app.post("/login", (req, res) => {
   if (!user) {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
-  // Si es la primera vez que esta sede hace login, inicializa su contador
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
-  // Reutiliza token si ya existe para la misma sede
   const existingToken = Object.keys(sessionsByToken).find(t => sessionsByToken[t].sede === sede);
   if (existingToken) {
     return res.json({ token: existingToken, counter: countersBySede[sede] });
   }
-  // Genera un nuevo token
   const token = crypto.randomBytes(16).toString("hex");
   sessionsByToken[token] = { sede };
   return res.json({ token, counter: countersBySede[sede] });
 });
 
-// Middleware para autenticar
 function authenticate(req, res, next) {
   const token = req.header("x-auth-token");
   if (!token || !sessionsByToken[token]) {
@@ -72,11 +62,9 @@ function authenticate(req, res, next) {
 // -------------------- Endpoint /generate (protegido) --------------------
 app.post("/generate", authenticate, async (req, res) => {
   const sede = req.sede;
-  // Asegura que haya un contador para la sede
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
-  // Verifica si la sede aún tiene créditos
   if (countersBySede[sede] <= 0) {
     return res.status(403).json({ error: "Límite de generación de imágenes alcanzado." });
   }
@@ -88,23 +76,27 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la ilustración." });
     }
 
-    // Ajusta las respuestas (por si vienen vacías)
+    // Extrae las respuestas
     const r1 = respuestas[0] || "Sin respuesta";
     const r2 = respuestas[1] || "Sin respuesta";
     const r3 = respuestas[2] || "Sin respuesta";
     const r4 = respuestas[3] || "Sin respuesta";
 
-    // Construir el prompt enfatizando un estilo 2D, doodle minimalista, line-art
+    // Construye un prompt MUY enfocado a 2D, doodle minimalista
     const finalPrompt = `
-Crea una ilustración 2D en estilo doodle minimalista (line-art, trazos simples, colores planos suaves, sin sombras realistas).
-Representa cómo la persona se motiva con "${r1}", practica hábitos saludables como "${r2}", y enfrenta el obstáculo de "${r3}".
-Incorpora una frase de empoderamiento en español basada en la respuesta 4 ("${r4}"), que refuerce la idea de bienestar y crecimiento personal.
-El diseño debe ser simple, optimista, con un personaje o símbolos que muestren estas ideas. No uses fotorealismo ni 3D.
+Ilustración vectorial 2D en estilo doodle minimalista (line-art, colores planos suaves, sin sombras realistas).
+Representa a una persona o silueta en movimiento que simbolice la motivación: "${r1}" 
+y hábitos saludables: "${r2}", superando el obstáculo: "${r3}".
+Incorpora una frase corta en español inspirada en "${r4}", como "Sé constante" o "Confía en ti". 
+El estilo debe ser sencillo, orgánico, con trazos suaves y elementos decorativos (flores, hojas, ondas). 
+Fondo claro, paleta de colores pastel. 
+No uses fotorealismo ni 3D. 
+Debe ser inspirador, limpio y minimalista.
     `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Llamada a la API de Leonardo usando el modelo "Leonardo Diffusion"
+    // Llamada a la API de Leonardo usando, por ejemplo, "Leonardo Diffusion"
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
@@ -115,10 +107,24 @@ El diseño debe ser simple, optimista, con un personaje o símbolos que muestren
         num_images: 1,
         presetStyle: "NONE",
         prompt: finalPrompt,
-        negative_prompt:
-          "3D, photorealistic, realistic, hyperrealistic, painting, photograph, cinematic lighting, " +
-          "highly detailed, intricate shading, realism, 3D shapes, real life, complex background, " +
-          "text glitch, text artifacts, blur, distortion, statue, sculpture, 3D render, CG, ultra-detailed"
+        negative_prompt: [
+          "photorealistic",
+          "realistic",
+          "hyperrealistic",
+          "3D",
+          "3d render",
+          "complex shading",
+          "ultra-detailed",
+          "dark lighting",
+          "painting",
+          "photograph",
+          "cinematic lighting",
+          "complex background",
+          "real life",
+          "blurry",
+          "distorted",
+          "sculpture"
+        ].join(", ")
       },
       {
         headers: {
@@ -141,7 +147,6 @@ El diseño debe ser simple, optimista, con un personaje o símbolos que muestren
     let pollAttempts = 0;
     const maxAttempts = 20;
     while (pollAttempts < maxAttempts && !imageUrl) {
-      // Espera 5 segundos antes de cada intento
       await new Promise(resolve => setTimeout(resolve, 5000));
       pollAttempts++;
       console.log(`Polling attempt ${pollAttempts} for generation ID ${generationId}...`);
@@ -173,7 +178,6 @@ El diseño debe ser simple, optimista, con un personaje o símbolos que muestren
     }
 
     console.log("✅ Image URL:", imageUrl);
-    // Devolvemos la URL de la imagen y el contador restante
     res.json({ image_url: imageUrl, remaining: countersBySede[sede] });
   } catch (error) {
     console.error("❌ Error generating image:", error.response?.data || error.message);

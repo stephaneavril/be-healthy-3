@@ -44,7 +44,7 @@ app.post("/login", (req, res) => {
   if (!user) {
     return res.status(401).json({ error: "Credenciales inválidas." });
   }
-  // Si es la primera vez que esta sede hace login, inicializa su contador en 50
+  // Si es la primera vez que esta sede hace login, inicializa su contador
   if (countersBySede[sede] === undefined) {
     countersBySede[sede] = 50;
   }
@@ -53,7 +53,7 @@ app.post("/login", (req, res) => {
   if (existingToken) {
     return res.json({ token: existingToken, counter: countersBySede[sede] });
   }
-  // Genera un nuevo token y lo guarda
+  // Genera un nuevo token
   const token = crypto.randomBytes(16).toString("hex");
   sessionsByToken[token] = { sede };
   return res.json({ token, counter: countersBySede[sede] });
@@ -80,7 +80,6 @@ app.post("/generate", authenticate, async (req, res) => {
   if (countersBySede[sede] <= 0) {
     return res.status(403).json({ error: "Límite de generación de imágenes alcanzado." });
   }
-  // Descuenta uno
   countersBySede[sede]--;
 
   try {
@@ -89,17 +88,18 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la ilustración." });
     }
 
-    // Construir el prompt con enfoque doodle minimalista
+    // Ajusta las respuestas (por si vienen vacías)
+    const r1 = respuestas[0] || "Sin respuesta";
+    const r2 = respuestas[1] || "Sin respuesta";
+    const r3 = respuestas[2] || "Sin respuesta";
+    const r4 = respuestas[3] || "Sin respuesta";
+
+    // Construir el prompt enfatizando un estilo 2D, doodle minimalista, line-art
     const finalPrompt = `
-Crea una ilustración en estilo doodle minimalista que represente la motivación y emociones del usuario sobre la construcción de hábitos saludables.
-Respuestas del usuario:
-1) "${respuestas[0]}"
-2) "${respuestas[1]}"
-3) "${respuestas[2]}"
-4) "${respuestas[3]}"
-La imagen debe ser simple, con trazos lineales, diseño limpio y un toque colorido.
-Incluye una breve frase de empoderamiento en español que resuma la esencia del bienestar y el crecimiento personal.
-No uses fotorealismo, 3D ni efectos hiperrealistas.
+Crea una ilustración 2D en estilo doodle minimalista (line-art, trazos simples, colores planos suaves, sin sombras realistas).
+Representa cómo la persona se motiva con "${r1}", practica hábitos saludables como "${r2}", y enfrenta el obstáculo de "${r3}".
+Incorpora una frase de empoderamiento en español basada en la respuesta 4 ("${r4}"), que refuerce la idea de bienestar y crecimiento personal.
+El diseño debe ser simple, optimista, con un personaje o símbolos que muestren estas ideas. No uses fotorealismo ni 3D.
     `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
@@ -113,9 +113,12 @@ No uses fotorealismo, 3D ni efectos hiperrealistas.
         width: 512,
         modelId: "b24e16ff-06e3-43eb-8d33-4416c2d75876",  // Leonardo Diffusion
         num_images: 1,
-        presetStyle: "NONE", // No se aplica preset; definimos el estilo en el prompt
+        presetStyle: "NONE",
         prompt: finalPrompt,
-        negative_prompt: "photorealistic, realistic, 3D, hyperrealistic, painting, photograph, cinematic lighting, highly detailed, intricate shading, realism"
+        negative_prompt:
+          "3D, photorealistic, realistic, hyperrealistic, painting, photograph, cinematic lighting, " +
+          "highly detailed, intricate shading, realism, 3D shapes, real life, complex background, " +
+          "text glitch, text artifacts, blur, distortion, statue, sculpture, 3D render, CG, ultra-detailed"
       },
       {
         headers: {

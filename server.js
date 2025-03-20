@@ -76,27 +76,25 @@ app.post("/generate", authenticate, async (req, res) => {
       return res.status(400).json({ error: "Se requieren 4 respuestas para generar la ilustración." });
     }
 
-    // Extrae las respuestas
     const r1 = respuestas[0] || "Sin respuesta";
     const r2 = respuestas[1] || "Sin respuesta";
     const r3 = respuestas[2] || "Sin respuesta";
     const r4 = respuestas[3] || "Sin respuesta";
 
-    // Construye un prompt MUY enfocado a 2D, doodle minimalista
+    // Prompt MUY enfocado a un estilo vectorial 2D, sin realismo:
     const finalPrompt = `
-Ilustración vectorial 2D en estilo doodle minimalista (line-art, colores planos suaves, sin sombras realistas).
-Representa a una persona o silueta en movimiento que simbolice la motivación: "${r1}" 
-y hábitos saludables: "${r2}", superando el obstáculo: "${r3}".
-Incorpora una frase corta en español inspirada en "${r4}", como "Sé constante" o "Confía en ti". 
-El estilo debe ser sencillo, orgánico, con trazos suaves y elementos decorativos (flores, hojas, ondas). 
-Fondo claro, paleta de colores pastel. 
-No uses fotorealismo ni 3D. 
-Debe ser inspirador, limpio y minimalista.
+Ilustración doodle minimalista en estilo vectorial 2D (line-art, colores planos suaves, sin sombras realistas).
+Muestra a un personaje estilo cartoon o silueta abstracta simbolizando la motivación: "${r1}" y hábitos saludables: "${r2}",
+superando el obstáculo: "${r3}". 
+Incluye una breve frase en español inspirada en "${r4}" (por ejemplo: "Sé constante", "Confía en ti").
+Fondo claro, paleta pastel, trazos sencillos, sin detalles fotorealistas. 
+Debe lucir amigable, orgánico y optimista, con elementos decorativos como hojas o líneas fluidas. 
+No uses realismo ni 3D.
     `;
 
     console.log("🔹 Generating image with prompt:", finalPrompt);
 
-    // Llamada a la API de Leonardo usando, por ejemplo, "Leonardo Diffusion"
+    // Llamada a la API de Leonardo (modelo "Leonardo Diffusion")
     const postResponse = await axios.post(
       "https://cloud.leonardo.ai/api/rest/v1/generations",
       {
@@ -108,22 +106,13 @@ Debe ser inspirador, limpio y minimalista.
         presetStyle: "NONE",
         prompt: finalPrompt,
         negative_prompt: [
-          "photorealistic",
-          "realistic",
-          "hyperrealistic",
-          "3D",
-          "3d render",
-          "complex shading",
-          "ultra-detailed",
-          "dark lighting",
-          "painting",
-          "photograph",
-          "cinematic lighting",
-          "complex background",
-          "real life",
-          "blurry",
-          "distorted",
-          "sculpture"
+          // Palabras que NO queremos
+          "photo", "photorealistic", "realistic", "hyperrealistic", "3D", "3d render",
+          "complex shading", "ultra-detailed", "dark lighting", "painting", "photograph",
+          "cinematic lighting", "complex background", "real life", "blurry", "distorted",
+          "sculpture", "statue", "model", "fashion", "face details", "detailed clothing",
+          "building", "architecture", "palm trees", "environment", "landscape", "shadows",
+          "detail", "real person", "woman in dress", "man in suit"
         ].join(", ")
       },
       {
@@ -142,7 +131,7 @@ Debe ser inspirador, limpio y minimalista.
     const generationId = postResponse.data.sdGenerationJob.generationId;
     console.log("Generation ID:", generationId);
 
-    // Polling para obtener la imagen generada
+    // Polling para obtener la imagen
     let imageUrl = null;
     let pollAttempts = 0;
     const maxAttempts = 20;
@@ -228,7 +217,6 @@ app.get("/print-label", (req, res) => {
   res.send(html);
 });
 
-// Inicia el servidor
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
